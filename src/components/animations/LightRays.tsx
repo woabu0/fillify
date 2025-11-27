@@ -126,7 +126,14 @@ const LightRays: React.FC<LightRaysProps> = ({
     const initializeWebGL = async () => {
       if (!containerRef.current) return;
 
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      // Defer WebGL initialization to avoid blocking main thread
+      await new Promise((resolve) => {
+        if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+          window.requestIdleCallback(() => resolve(undefined), { timeout: 2000 });
+        } else {
+          setTimeout(() => resolve(undefined), 100);
+        }
+      });
 
       if (!containerRef.current) return;
 
@@ -323,7 +330,10 @@ void main() {
           renderer.render({ scene: mesh });
           animationIdRef.current = requestAnimationFrame(loop);
         } catch (error) {
-          console.warn("WebGL rendering error:", error);
+          // Silently handle errors in production
+          if (process.env.NODE_ENV !== "production") {
+            console.warn("WebGL rendering error:", error);
+          }
           return;
         }
       };
